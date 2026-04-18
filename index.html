@@ -24,12 +24,12 @@
     <div class="card mb-4">
         <div class="header-custom text-center">
             <h2>Sistem Pakar Diagnosa Penyakit Mata</h2>
-            <p>Implementasi Certainty Factor: 4 Penyakit & 10 Gejala</p>
+            <p>Implementasi Certainty Factor Berdasarkan Tabel Data Penyakit & Gejala</p>
         </div>
         <div class="card-body p-4">
             
             <form id="cfForm">
-                <h5 class="section-title"><i class="bi bi-person-badge"></i> Identitas Pasien</h5>
+                <h5 class="section-title">Identitas Pasien</h5>
                 <div class="row mb-4">
                     <div class="col-md-6 mb-3">
                         <label class="form-label fw-bold">Nama Lengkap</label>
@@ -44,13 +44,11 @@
                             <option value="4">Kelompok 4</option>
                             <option value="5">Kelompok 5</option>
                             <option value="6">Kelompok 6</option>
-                            <option value="8">Kelompok 8</option>
-                            <option value="9">Kelompok 9</option>
                         </select>
                     </div>
                 </div>
 
-                <h5 class="section-title"><i class="bi bi-card-checklist"></i> Pilih Gejala & Tingkat Keyakinan</h5>
+                <h5 class="section-title">Pilih Gejala & Tingkat Keyakinan</h5>
                 <div class="row" id="symptomInputs"></div>
                 
                 <div class="d-grid mt-4">
@@ -93,24 +91,27 @@
 </div>
 
 <script>
+    // Penyesuaian Berdasarkan Tabel 1: Data Penyakit
+    // (Mapping gejala di bawah adalah asumsi logika medis dasar karena tidak ada tabel aturan di gambar)
     const penyakitMata = [
-        { id: "P01", nama: "Katarak", gejala: [ { id: "G01", cfPakar: 0.8 }, { id: "G04", cfPakar: 0.6 }, { id: "G05", cfPakar: 0.5 } ]},
-        { id: "P02", nama: "Glaukoma", gejala: [ { id: "G01", cfPakar: 0.4 }, { id: "G08", cfPakar: 0.7 }, { id: "G09", cfPakar: 0.9 } ]},
-        { id: "P03", nama: "Konjungtivitis", gejala: [ { id: "G02", cfPakar: 0.8 }, { id: "G03", cfPakar: 0.6 }, { id: "G06", cfPakar: 0.5 }, { id: "G07", cfPakar: 0.4 } ]},
-        { id: "P04", nama: "Pterygium", gejala: [ { id: "G02", cfPakar: 0.4 }, { id: "G07", cfPakar: 0.6 }, { id: "G10", cfPakar: 0.8 } ]}
+        { id: "P1", nama: "Konjungtiv", gejala: [ { id: "G02", cfPakar: 0.8 }, { id: "G03", cfPakar: 0.7 }, { id: "G04", cfPakar: 0.6 }, { id: "G05", cfPakar: 0.9 } ]},
+        { id: "P2", nama: "Pterygium", gejala: [ { id: "G01", cfPakar: 0.5 }, { id: "G06", cfPakar: 0.8 }, { id: "G09", cfPakar: 0.7 } ]},
+        { id: "P3", nama: "Katarak", gejala: [ { id: "G08", cfPakar: 0.7 }, { id: "G10", cfPakar: 0.9 } ]},
+        { id: "P4", nama: "Glaukoma", gejala: [ { id: "G07", cfPakar: 0.6 }, { id: "G08", cfPakar: 0.8 } ]}
     ];
 
+    // Penyesuaian Berdasarkan Tabel 2: Gejala Penyakit
     const daftarGejala = [
-        { id: "G01", teks: "Pandangan kabur atau berasap" },
-        { id: "G02", teks: "Mata berwarna merah" },
-        { id: "G03", teks: "Mata terasa perih atau pedih" },
-        { id: "G04", teks: "Silau saat melihat cahaya" },
-        { id: "G05", teks: "Penglihatan ganda" },
-        { id: "G06", teks: "Mata sering berair" },
-        { id: "G07", teks: "Terasa ada benda mengganjal di mata" },
-        { id: "G08", teks: "Sakit kepala hebat" },
-        { id: "G09", teks: "Mual atau muntah" },
-        { id: "G10", teks: "Muncul selaput pada bagian putih mata" }
+        { id: "G01", teks: "Rasa Mengganjal" },
+        { id: "G02", teks: "Mata terasa gatal dan berair" },
+        { id: "G03", teks: "Mata berwarna merah" },
+        { id: "G04", teks: "Mata mengeluarkan kotoran" },
+        { id: "G05", teks: "Tertular penyakit dari orang lain" },
+        { id: "G06", teks: "Jaringan lemak menutupi permukaan mata" },
+        { id: "G07", teks: "Gatal atau perih pada mata" },
+        { id: "G08", teks: "Pandangan kabur" },
+        { id: "G09", teks: "Bekerja dibawah matahari dan berdebu" },
+        { id: "G10", teks: "Penglihatan minim seperti tertutup kabut" }
     ];
 
     const bobotUser = [
@@ -148,35 +149,38 @@
 
         penyakitMata.forEach(p => {
             let logPenyakit = { nama: p.nama, perkalian: [], kombinasi: [], hasilAkhir: 0 };
-            logHTML += `<div class="alert alert-secondary"><strong>Analisis: ${p.nama}</strong></div>`;
-            
             let cfList = [];
             
-            logHTML += `<div class="step-container"><span class="step-label">Langkah 1 & 2: CF[H,E] = CF[Pakar] * CF[User]</span>`;
+            let diseaseHeader = `<div class="alert alert-secondary mt-3"><strong>Analisis: ${p.nama}</strong></div>`;
+            let step1Log = `<div class="step-container"><span class="step-label">Langkah 1 & 2: CF[H,E] = CF[Pakar] * CF[User]</span>`;
+            
             p.gejala.forEach(pg => {
                 let uVal = userAnswers[pg.id];
                 if(uVal > 0) {
                     let res = pg.cfPakar * uVal;
                     cfList.push(res);
                     let teksLog = `${pg.id}: ${pg.cfPakar} * ${uVal} = ${res.toFixed(2)}`;
-                    logHTML += `<div class="math-box">${teksLog}</div>`;
+                    step1Log += `<div class="math-box">${teksLog}</div>`;
                     logPenyakit.perkalian.push(teksLog);
                 }
             });
-            logHTML += `</div>`;
+            step1Log += `</div>`;
 
-            let totalCF = 0;
             if(cfList.length > 0) {
-                logHTML += `<div class="step-container"><span class="step-label">Langkah 3: Combine CF</span>`;
-                totalCF = cfList[0];
-                for(let i = 1; i < cfList.length; i++) {
-                    let old = totalCF;
-                    totalCF = old + (cfList[i] * (1 - old));
-                    let teksComb = `Comb ${i}: ${old.toFixed(3)} + ${cfList[i]} * (1 - ${old.toFixed(3)}) = ${totalCF.toFixed(3)}`;
-                    logHTML += `<div class="math-box">${teksComb}</div>`;
-                    logPenyakit.kombinasi.push(teksComb);
+                logHTML += diseaseHeader + step1Log;
+                let totalCF = cfList[0];
+                
+                if(cfList.length > 1) {
+                    logHTML += `<div class="step-container"><span class="step-label">Langkah 3: Combine CF</span>`;
+                    for(let i = 1; i < cfList.length; i++) {
+                        let old = totalCF;
+                        totalCF = old + (cfList[i] * (1 - old));
+                        let teksComb = `Comb ${i}: ${old.toFixed(3)} + ${cfList[i]} * (1 - ${old.toFixed(3)}) = ${totalCF.toFixed(3)}`;
+                        logHTML += `<div class="math-box">${teksComb}</div>`;
+                        logPenyakit.kombinasi.push(teksComb);
+                    }
+                    logHTML += `</div>`;
                 }
-                logHTML += `</div>`;
 
                 let finalPercent = (totalCF * 100).toFixed(2);
                 logHTML += `<div class="step-container text-success"><span class="step-label">Langkah 4: Persentase Akhir</span>
@@ -214,9 +218,9 @@
             };
 
             document.getElementById('resultBox').style.display = "block";
-            window.scrollTo(0, document.body.scrollHeight);
+            window.scrollTo(0, document.getElementById('resultBox').offsetTop);
         } else {
-            alert("Silakan pilih minimal satu gejala!");
+            alert("Silakan pilih minimal satu gejala yang Anda rasakan!");
         }
     }
 
@@ -225,13 +229,11 @@
         const doc = new jsPDF();
         let yPos = 20;
 
-        // Header
         doc.setFontSize(16);
         doc.setFont(undefined, 'bold');
-        doc.text("LAPORAN DIAGNOSA SISTEM PAKAR (CF)", 105, yPos, { align: 'center' });
+        doc.text("LAPORAN DIAGNOSA SISTEM PAKAR MATA", 105, yPos, { align: 'center' });
         yPos += 15;
 
-        // Info Identitas
         doc.setFontSize(11);
         doc.setFont(undefined, 'normal');
         doc.text(`Nama Pasien : ${dataPDF.namaPasien}`, 20, yPos);
@@ -241,57 +243,50 @@
         doc.text(`Tanggal     : ${new Date().toLocaleDateString('id-ID')}`, 20, yPos);
         yPos += 12;
 
-        // Hasil Utama
-        doc.setFillColor(240, 240, 240);
+        doc.setFillColor(230, 240, 255);
         doc.rect(20, yPos, 170, 15, 'F');
         doc.setFont(undefined, 'bold');
-        doc.text(`HASIL UTAMA: ${dataPDF.top.nama} (${dataPDF.top.persen}%)`, 25, yPos + 10);
+        doc.text(`HASIL DIAGNOSA: ${dataPDF.top.nama} (${dataPDF.top.persen}%)`, 25, yPos + 10);
         yPos += 25;
 
-        // Gejala
-        doc.text("GEJALA YANG DIPILIH:", 20, yPos);
+        doc.text("GEJALA YANG DIALAMI:", 20, yPos);
         doc.autoTable({
             startY: yPos + 5,
-            head: [['ID', 'Nama Gejala', 'Keyakinan']],
+            head: [['Kode', 'Gejala', 'Tingkat Keyakinan']],
             body: dataPDF.answers,
             theme: 'grid',
             headStyles: { fillColor: [30, 60, 114] }
         });
         yPos = doc.lastAutoTable.finalY + 15;
 
-        // Perhitungan
         doc.setFont(undefined, 'bold');
-        doc.text("DETAIL PERHITUNGAN MATEMATIS:", 20, yPos);
+        doc.text("DETAIL PERHITUNGAN (CERTAINTY FACTOR):", 20, yPos);
         yPos += 8;
 
         dataPDF.detailLangkah.forEach((item, index) => {
-            if (yPos > 240) { doc.addPage(); yPos = 20; }
+            if (yPos > 250) { doc.addPage(); yPos = 20; }
             doc.setFontSize(10);
             doc.setFont(undefined, 'bold');
-            doc.text(`${index + 1}. Analisis Penyakit: ${item.nama}`, 20, yPos);
+            doc.text(`${index + 1}. Analisis: ${item.nama}`, 20, yPos);
             yPos += 6;
             
             doc.setFont(undefined, 'normal');
-            doc.text("   Langkah 1 & 2 (Pakar * User):", 20, yPos);
-            yPos += 5;
             item.perkalian.forEach(p => {
-                doc.text(`     - ${p}`, 20, yPos);
+                doc.text(`   - ${p}`, 20, yPos);
                 yPos += 5;
             });
 
-            doc.text("   Langkah 3 (Kombinasi CF):", 20, yPos);
-            yPos += 5;
-            item.kombinasi.length > 0 ? item.kombinasi.forEach(c => {
-                doc.text(`     - ${c}`, 20, yPos);
+            item.kombinasi.forEach(c => {
+                doc.text(`   - ${c}`, 20, yPos);
                 yPos += 5;
-            }) : (doc.text("     - (Hanya 1 gejala, tidak ada kombinasi)", 20, yPos), yPos += 5);
+            });
 
             doc.setFont(undefined, 'bold');
             doc.text(`   Total Akhir: ${item.hasilAkhir}%`, 20, yPos);
             yPos += 10;
         });
 
-        doc.save(`Laporan_Pakar_${dataPDF.namaPasien}.pdf`);
+        doc.save(`Hasil_Diagnosa_${dataPDF.namaPasien}.pdf`);
     }
 </script>
 </body>
