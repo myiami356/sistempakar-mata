@@ -44,8 +44,8 @@
                             <option value="4">Kelompok 4</option>
                             <option value="5">Kelompok 5</option>
                             <option value="6">Kelompok 6</option>
-                            <option value="6">Kelompok 8</option>
-                            <option value="6">Kelompok 9</option>
+                            <option value="8">Kelompok 8</option>
+                            <option value="9">Kelompok 9</option>
                         </select>
                     </div>
                 </div>
@@ -93,8 +93,7 @@
 </div>
 
 <script>
-    // Penyesuaian Berdasarkan Tabel 1: Data Penyakit
-    // (Mapping gejala di bawah adalah asumsi logika medis dasar karena tidak ada tabel aturan di gambar)
+    // Penyesuaian Berdasarkan Tabel 1 & 2 pada Gambar
     const penyakitMata = [
         { id: "P1", nama: "Konjungtiv", gejala: [ { id: "G02", cfPakar: 0.8 }, { id: "G03", cfPakar: 0.7 }, { id: "G04", cfPakar: 0.6 }, { id: "G05", cfPakar: 0.9 } ]},
         { id: "P2", nama: "Pterygium", gejala: [ { id: "G01", cfPakar: 0.5 }, { id: "G06", cfPakar: 0.8 }, { id: "G09", cfPakar: 0.7 } ]},
@@ -102,7 +101,6 @@
         { id: "P4", nama: "Glaukoma", gejala: [ { id: "G07", cfPakar: 0.6 }, { id: "G08", cfPakar: 0.8 } ]}
     ];
 
-    // Penyesuaian Berdasarkan Tabel 2: Gejala Penyakit
     const daftarGejala = [
         { id: "G01", teks: "Rasa Mengganjal" },
         { id: "G02", teks: "Mata terasa gatal dan berair" },
@@ -153,25 +151,22 @@
             let logPenyakit = { nama: p.nama, perkalian: [], kombinasi: [], hasilAkhir: 0 };
             let cfList = [];
             
-            let diseaseHeader = `<div class="alert alert-secondary mt-3"><strong>Analisis: ${p.nama}</strong></div>`;
-            let step1Log = `<div class="step-container"><span class="step-label">Langkah 1 & 2: CF[H,E] = CF[Pakar] * CF[User]</span>`;
-            
             p.gejala.forEach(pg => {
                 let uVal = userAnswers[pg.id];
                 if(uVal > 0) {
                     let res = pg.cfPakar * uVal;
                     cfList.push(res);
-                    let teksLog = `${pg.id}: ${pg.cfPakar} * ${uVal} = ${res.toFixed(2)}`;
-                    step1Log += `<div class="math-box">${teksLog}</div>`;
-                    logPenyakit.perkalian.push(teksLog);
+                    logPenyakit.perkalian.push(`${pg.id}: ${pg.cfPakar} * ${uVal} = ${res.toFixed(2)}`);
                 }
             });
-            step1Log += `</div>`;
 
             if(cfList.length > 0) {
-                logHTML += diseaseHeader + step1Log;
+                logHTML += `<div class="alert alert-secondary mt-3"><strong>Analisis: ${p.nama}</strong></div>`;
+                logHTML += `<div class="step-container"><span class="step-label">Langkah 1 & 2: CF[H,E]</span>`;
+                logPenyakit.perkalian.forEach(txt => logHTML += `<div class="math-box">${txt}</div>`);
+                logHTML += `</div>`;
+
                 let totalCF = cfList[0];
-                
                 if(cfList.length > 1) {
                     logHTML += `<div class="step-container"><span class="step-label">Langkah 3: Combine CF</span>`;
                     for(let i = 1; i < cfList.length; i++) {
@@ -185,7 +180,7 @@
                 }
 
                 let finalPercent = (totalCF * 100).toFixed(2);
-                logHTML += `<div class="step-container text-success"><span class="step-label">Langkah 4: Persentase Akhir</span>
+                logHTML += `<div class="step-container text-success"><span class="step-label">Langkah 4: Hasil</span>
                             <div class="math-box">${totalCF.toFixed(3)} * 100% = <strong>${finalPercent}%</strong></div></div>`;
                 
                 logPenyakit.hasilAkhir = finalPercent;
@@ -222,7 +217,7 @@
             document.getElementById('resultBox').style.display = "block";
             window.scrollTo(0, document.getElementById('resultBox').offsetTop);
         } else {
-            alert("Silakan pilih minimal satu gejala yang Anda rasakan!");
+            alert("Pilih minimal satu gejala!");
         }
     }
 
@@ -231,61 +226,25 @@
         const doc = new jsPDF();
         let yPos = 20;
 
-        doc.setFontSize(16);
-        doc.setFont(undefined, 'bold');
+        doc.setFontSize(16).setFont(undefined, 'bold');
         doc.text("LAPORAN DIAGNOSA SISTEM PAKAR MATA", 105, yPos, { align: 'center' });
         yPos += 15;
 
-        doc.setFontSize(11);
-        doc.setFont(undefined, 'normal');
-        doc.text(`Nama Pasien : ${dataPDF.namaPasien}`, 20, yPos);
-        yPos += 6;
-        doc.text(`Kelompok    : ${dataPDF.kelompok}`, 20, yPos);
-        yPos += 6;
-        doc.text(`Tanggal     : ${new Date().toLocaleDateString('id-ID')}`, 20, yPos);
-        yPos += 12;
+        doc.setFontSize(11).setFont(undefined, 'normal');
+        doc.text(`Nama Pasien : ${dataPDF.namaPasien}`, 20, yPos); yPos += 6;
+        doc.text(`Kelompok    : Kelompok ${dataPDF.kelompok}`, 20, yPos); yPos += 6;
+        doc.text(`Tanggal     : ${new Date().toLocaleDateString('id-ID')}`, 20, yPos); yPos += 12;
 
-        doc.setFillColor(230, 240, 255);
-        doc.rect(20, yPos, 170, 15, 'F');
-        doc.setFont(undefined, 'bold');
-        doc.text(`HASIL DIAGNOSA: ${dataPDF.top.nama} (${dataPDF.top.persen}%)`, 25, yPos + 10);
+        doc.setFillColor(230, 240, 255).rect(20, yPos, 170, 15, 'F');
+        doc.setFont(undefined, 'bold').text(`HASIL DIAGNOSA: ${dataPDF.top.nama} (${dataPDF.top.persen}%)`, 25, yPos + 10);
         yPos += 25;
 
-        doc.text("GEJALA YANG DIALAMI:", 20, yPos);
         doc.autoTable({
-            startY: yPos + 5,
-            head: [['Kode', 'Gejala', 'Tingkat Keyakinan']],
+            startY: yPos,
+            head: [['Kode', 'Gejala', 'Keyakinan']],
             body: dataPDF.answers,
             theme: 'grid',
             headStyles: { fillColor: [30, 60, 114] }
-        });
-        yPos = doc.lastAutoTable.finalY + 15;
-
-        doc.setFont(undefined, 'bold');
-        doc.text("DETAIL PERHITUNGAN (CERTAINTY FACTOR):", 20, yPos);
-        yPos += 8;
-
-        dataPDF.detailLangkah.forEach((item, index) => {
-            if (yPos > 250) { doc.addPage(); yPos = 20; }
-            doc.setFontSize(10);
-            doc.setFont(undefined, 'bold');
-            doc.text(`${index + 1}. Analisis: ${item.nama}`, 20, yPos);
-            yPos += 6;
-            
-            doc.setFont(undefined, 'normal');
-            item.perkalian.forEach(p => {
-                doc.text(`   - ${p}`, 20, yPos);
-                yPos += 5;
-            });
-
-            item.kombinasi.forEach(c => {
-                doc.text(`   - ${c}`, 20, yPos);
-                yPos += 5;
-            });
-
-            doc.setFont(undefined, 'bold');
-            doc.text(`   Total Akhir: ${item.hasilAkhir}%`, 20, yPos);
-            yPos += 10;
         });
 
         doc.save(`Hasil_Diagnosa_${dataPDF.namaPasien}.pdf`);
