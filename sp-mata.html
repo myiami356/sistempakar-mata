@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Pakar Mata - Diagnosa CF</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; font-family: 'Segoe UI', sans-serif; }
+        .card { border-radius: 15px; border: none; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .header-custom { background: linear-gradient(135deg, #1e3c72, #2a5298); color: white; border-radius: 15px 15px 0 0; padding: 30px; }
+        .step-container { border-left: 4px solid #0d6efd; padding-left: 20px; margin-bottom: 25px; }
+        .step-label { font-weight: bold; color: #0d6efd; text-transform: uppercase; font-size: 0.8rem; display: block; }
+        .math-box { background: #f1f3f5; padding: 10px; border-radius: 8px; font-family: 'Courier New', monospace; margin-top: 5px; }
+        .badge-percent { font-size: 1.2rem; padding: 10px 20px; }
+        .section-title { border-bottom: 2px solid #dee2e6; padding-bottom: 10px; margin-bottom: 20px; color: #1e3c72; }
+    </style>
+</head>
+<body>
+
+<div class="container py-5">
+    <div class="card mb-4">
+        <div class="header-custom text-center">
+            <h2>Sistem Pakar Diagnosa Penyakit Mata</h2>
+            <p>Implementasi Certainty Factor: 4 Penyakit & 10 Gejala</p>
+        </div>
+        <div class="card-body p-4">
+            
+            <form id="cfForm">
+                <h5 class="section-title"><i class="bi bi-person-badge"></i> Identitas Pasien</h5>
+                <div class="row mb-4">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Nama Lengkap</label>
+                        <input type="text" id="userName" class="form-control" placeholder="Masukkan nama Anda" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Kelompok</label>
+                        <select id="userGroup" class="form-select">
+                            <option value="1">Kelompok 1</option>
+                            <option value="2">Kelompok 2</option>
+                            <option value="3">Kelompok 3</option>
+                            <option value="4">Kelompok 4</option>
+                            <option value="5">Kelompok 5</option>
+                            <option value="6">Kelompok 6</option>
+                            <option value="8">Kelompok 8</option>
+                            <option value="9">Kelompok 9</option>
+                        </select>
+                    </div>
+                </div>
+
+                <h5 class="section-title"><i class="bi bi-card-checklist"></i> Pilih Gejala & Tingkat Keyakinan</h5>
+                <div class="row" id="symptomInputs"></div>
+                
+                <div class="d-grid mt-4">
+                    <button type="button" class="btn btn-primary btn-lg" onclick="hitungSistemPakar()">Diagnosa Sekarang</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="resultBox" style="display:none;">
+        <div class="card p-4 border-primary mb-4">
+            <div class="text-center">
+                <h4 class="text-muted">Hasil Diagnosa Tertinggi:</h4>
+                <h1 class="text-primary fw-bold" id="topDisease">-</h1>
+                <div class="badge bg-success badge-percent mb-3" id="topPercent">0%</div>
+            </div>
+            
+            <hr>
+            <h5>Detail Perhitungan (Langkah-langkah):</h5>
+            <div id="calculationLog"></div>
+
+            <hr>
+            <h5>Perbandingan Penyakit Lainnya:</h5>
+            <table class="table table-striped mt-2">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Nama Penyakit</th>
+                        <th>Persentase Keyakinan</th>
+                    </tr>
+                </thead>
+                <tbody id="otherDiseasesBody"></tbody>
+            </table>
+
+            <div class="mt-4 text-center">
+                <button class="btn btn-danger" onclick="cetakPDF()">Download Hasil (PDF)</button>
+                <button class="btn btn-outline-secondary" onclick="window.location.reload()">Reset</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const penyakitMata = [
+        { id: "P01", nama: "Katarak", gejala: [ { id: "G01", cfPakar: 0.8 }, { id: "G04", cfPakar: 0.6 }, { id: "G05", cfPakar: 0.5 } ]},
+        { id: "P02", nama: "Glaukoma", gejala: [ { id: "G01", cfPakar: 0.4 }, { id: "G08", cfPakar: 0.7 }, { id: "G09", cfPakar: 0.9 } ]},
+        { id: "P03", nama: "Konjungtivitis", gejala: [ { id: "G02", cfPakar: 0.8 }, { id: "G03", cfPakar: 0.6 }, { id: "G06", cfPakar: 0.5 }, { id: "G07", cfPakar: 0.4 } ]},
+        { id: "P04", nama: "Pterygium", gejala: [ { id: "G02", cfPakar: 0.4 }, { id: "G07", cfPakar: 0.6 }, { id: "G10", cfPakar: 0.8 } ]}
+    ];
+
+    const daftarGejala = [
+        { id: "G01", teks: "Pandangan kabur atau berasap" },
+        { id: "G02", teks: "Mata berwarna merah" },
+        { id: "G03", teks: "Mata terasa perih atau pedih" },
+        { id: "G04", teks: "Silau saat melihat cahaya" },
+        { id: "G05", teks: "Penglihatan ganda" },
+        { id: "G06", teks: "Mata sering berair" },
+        { id: "G07", teks: "Terasa ada benda mengganjal di mata" },
+        { id: "G08", teks: "Sakit kepala hebat" },
+        { id: "G09", teks: "Mual atau muntah" },
+        { id: "G10", teks: "Muncul selaput pada bagian putih mata" }
+    ];
+
+    const bobotUser = [
+        { teks: "Tidak", val: 0 }, { teks: "Tidak Tahu", val: 0.2 }, { teks: "Sedikit Yakin", val: 0.4 },
+        { teks: "Cukup Yakin", val: 0.6 }, { teks: "Yakin", val: 0.8 }, { teks: "Sangat Yakin", val: 1.0 }
+    ];
+
+    const container = document.getElementById('symptomInputs');
+    daftarGejala.forEach(g => {
+        container.innerHTML += `
+            <div class="col-md-6 mb-3">
+                <div class="p-3 border rounded bg-white">
+                    <label class="form-label fw-semibold">${g.id}. ${g.teks}</label>
+                    <select class="form-select user-val" data-id="${g.id}">
+                        ${bobotUser.map(b => `<option value="${b.val}">${b.teks}</option>`).join('')}
+                    </select>
+                </div>
+            </div>`;
+    });
+
+    let dataPDF = null;
+
+    function hitungSistemPakar() {
+        const name = document.getElementById('userName').value;
+        if(!name) { alert("Harap isi Nama Anda!"); return; }
+
+        const group = document.getElementById('userGroup').value;
+        const inputs = document.querySelectorAll('.user-val');
+        let userAnswers = {};
+        inputs.forEach(inp => userAnswers[inp.dataset.id] = parseFloat(inp.value));
+
+        let results = [];
+        let logHTML = "";
+        let stepsForPDF = [];
+
+        penyakitMata.forEach(p => {
+            let logPenyakit = { nama: p.nama, perkalian: [], kombinasi: [], hasilAkhir: 0 };
+            logHTML += `<div class="alert alert-secondary"><strong>Analisis: ${p.nama}</strong></div>`;
+            
+            let cfList = [];
+            
+            logHTML += `<div class="step-container"><span class="step-label">Langkah 1 & 2: CF[H,E] = CF[Pakar] * CF[User]</span>`;
+            p.gejala.forEach(pg => {
+                let uVal = userAnswers[pg.id];
+                if(uVal > 0) {
+                    let res = pg.cfPakar * uVal;
+                    cfList.push(res);
+                    let teksLog = `${pg.id}: ${pg.cfPakar} * ${uVal} = ${res.toFixed(2)}`;
+                    logHTML += `<div class="math-box">${teksLog}</div>`;
+                    logPenyakit.perkalian.push(teksLog);
+                }
+            });
+            logHTML += `</div>`;
+
+            let totalCF = 0;
+            if(cfList.length > 0) {
+                logHTML += `<div class="step-container"><span class="step-label">Langkah 3: Combine CF</span>`;
+                totalCF = cfList[0];
+                for(let i = 1; i < cfList.length; i++) {
+                    let old = totalCF;
+                    totalCF = old + (cfList[i] * (1 - old));
+                    let teksComb = `Comb ${i}: ${old.toFixed(3)} + ${cfList[i]} * (1 - ${old.toFixed(3)}) = ${totalCF.toFixed(3)}`;
+                    logHTML += `<div class="math-box">${teksComb}</div>`;
+                    logPenyakit.kombinasi.push(teksComb);
+                }
+                logHTML += `</div>`;
+
+                let finalPercent = (totalCF * 100).toFixed(2);
+                logHTML += `<div class="step-container text-success"><span class="step-label">Langkah 4: Persentase Akhir</span>
+                            <div class="math-box">${totalCF.toFixed(3)} * 100% = <strong>${finalPercent}%</strong></div></div>`;
+                
+                logPenyakit.hasilAkhir = finalPercent;
+                results.push({ nama: p.nama, skor: totalCF, persen: finalPercent });
+                stepsForPDF.push(logPenyakit);
+            }
+        });
+
+        results.sort((a,b) => b.skor - a.skor);
+        
+        if(results.length > 0) {
+            document.getElementById('topDisease').innerText = results[0].nama;
+            document.getElementById('topPercent').innerText = results[0].persen + "%";
+            document.getElementById('calculationLog').innerHTML = logHTML;
+            
+            const otherBody = document.getElementById('otherDiseasesBody');
+            otherBody.innerHTML = "";
+            results.forEach(r => {
+                otherBody.innerHTML += `<tr><td>${r.nama}</td><td><strong>${r.persen}%</strong></td></tr>`;
+            });
+
+            dataPDF = {
+                namaPasien: name,
+                kelompok: group,
+                top: results[0],
+                all: results,
+                answers: Array.from(inputs).filter(i => i.value > 0).map(i => {
+                    const g = daftarGejala.find(x => x.id === i.dataset.id);
+                    return [g.id, g.teks, bobotUser.find(b => b.val == i.value).teks];
+                }),
+                detailLangkah: stepsForPDF
+            };
+
+            document.getElementById('resultBox').style.display = "block";
+            window.scrollTo(0, document.body.scrollHeight);
+        } else {
+            alert("Silakan pilih minimal satu gejala!");
+        }
+    }
+
+    function cetakPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        let yPos = 20;
+
+        // Header
+        doc.setFontSize(16);
+        doc.setFont(undefined, 'bold');
+        doc.text("LAPORAN DIAGNOSA SISTEM PAKAR (CF)", 105, yPos, { align: 'center' });
+        yPos += 15;
+
+        // Info Identitas
+        doc.setFontSize(11);
+        doc.setFont(undefined, 'normal');
+        doc.text(`Nama Pasien : ${dataPDF.namaPasien}`, 20, yPos);
+        yPos += 6;
+        doc.text(`Kelompok    : ${dataPDF.kelompok}`, 20, yPos);
+        yPos += 6;
+        doc.text(`Tanggal     : ${new Date().toLocaleDateString('id-ID')}`, 20, yPos);
+        yPos += 12;
+
+        // Hasil Utama
+        doc.setFillColor(240, 240, 240);
+        doc.rect(20, yPos, 170, 15, 'F');
+        doc.setFont(undefined, 'bold');
+        doc.text(`HASIL UTAMA: ${dataPDF.top.nama} (${dataPDF.top.persen}%)`, 25, yPos + 10);
+        yPos += 25;
+
+        // Gejala
+        doc.text("GEJALA YANG DIPILIH:", 20, yPos);
+        doc.autoTable({
+            startY: yPos + 5,
+            head: [['ID', 'Nama Gejala', 'Keyakinan']],
+            body: dataPDF.answers,
+            theme: 'grid',
+            headStyles: { fillColor: [30, 60, 114] }
+        });
+        yPos = doc.lastAutoTable.finalY + 15;
+
+        // Perhitungan
+        doc.setFont(undefined, 'bold');
+        doc.text("DETAIL PERHITUNGAN MATEMATIS:", 20, yPos);
+        yPos += 8;
+
+        dataPDF.detailLangkah.forEach((item, index) => {
+            if (yPos > 240) { doc.addPage(); yPos = 20; }
+            doc.setFontSize(10);
+            doc.setFont(undefined, 'bold');
+            doc.text(`${index + 1}. Analisis Penyakit: ${item.nama}`, 20, yPos);
+            yPos += 6;
+            
+            doc.setFont(undefined, 'normal');
+            doc.text("   Langkah 1 & 2 (Pakar * User):", 20, yPos);
+            yPos += 5;
+            item.perkalian.forEach(p => {
+                doc.text(`     - ${p}`, 20, yPos);
+                yPos += 5;
+            });
+
+            doc.text("   Langkah 3 (Kombinasi CF):", 20, yPos);
+            yPos += 5;
+            item.kombinasi.length > 0 ? item.kombinasi.forEach(c => {
+                doc.text(`     - ${c}`, 20, yPos);
+                yPos += 5;
+            }) : (doc.text("     - (Hanya 1 gejala, tidak ada kombinasi)", 20, yPos), yPos += 5);
+
+            doc.setFont(undefined, 'bold');
+            doc.text(`   Total Akhir: ${item.hasilAkhir}%`, 20, yPos);
+            yPos += 10;
+        });
+
+        doc.save(`Laporan_Pakar_${dataPDF.namaPasien}.pdf`);
+    }
+</script>
+</body>
+</html>
